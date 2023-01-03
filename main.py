@@ -13,10 +13,10 @@ import http.client
 import time
 from collections import Counter
 import os
-# from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv, find_dotenv
 import json
 
-# load_dotenv(find_dotenv('/config/'))
+load_dotenv(find_dotenv('/config/'))
 
 X_AUTH = os.getenv('X_AUTH')
 
