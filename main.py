@@ -16,7 +16,7 @@ import os
 from dotenv import load_dotenv, find_dotenv
 import json
 
-load_dotenv(find_dotenv('/config/'))
+load_dotenv(find_dotenv())
 
 X_AUTH = os.getenv('X_AUTH')
 
