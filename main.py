@@ -13,10 +13,10 @@ import http.client
 import time
 from collections import Counter
 import os
-from dotenv import load_dotenv, find_dotenv
+# from dotenv import load_dotenv, find_dotenv
 import json
 
-load_dotenv(find_dotenv('/config/'))
+# load_dotenv(find_dotenv('/config/'))
 
 X_AUTH = os.getenv('X_AUTH')
 
@@ -166,6 +166,7 @@ async def show_loyalty_points(showLoyalty:loyaltyPoints):
     conn.request("GET", "/stores/"+showLoyalty.store+"/v3/customers/form-field-values?customer_id="+showLoyalty.cid+"", headers=headers)
     res = conn.getresponse()
     data = json.loads(res.read()) 
+    print(data)
     pointsData = data.get('data')
     pointCurrency = "{:.2f}".format(pointsData[0]["value"]/100)
     return {"message":"Use "+str(pointsData[0]["value"])+" Points for a "+str(pointCurrency)+" discount on this order!","monetry_point":"2.00","total_point":str(pointsData[0]["value"])}
