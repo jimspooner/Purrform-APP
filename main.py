@@ -117,10 +117,10 @@ class UpdateDelivery(BaseModel):
 class UpdateCustomer(BaseModel):
     producer:str
     hash:str
-    created_at:str
+    created_at:int
     store_id:str
     scope:str
-    data:List
+    data:dict
 
     class Config:   
         orm_mode=True
@@ -351,10 +351,8 @@ async def order_update():
 @app.post("/webhook/v3/customer_update", status_code=200)
 async def customer_update(updateLoyalty:UpdateCustomer):
     # UPDATE LOYALTY POINTS
-    formField = updateLoyalty.data
-    for item, val in formField.items():
-        if item == 'id':
-            cust_id = val
+    cust_id = updateLoyalty.data.get('id')
+
     conn = http.client.HTTPSConnection("api.bigcommerce.com")
 
     payload = "[\n  {\n    \"customer_id\": "+str(cust_id)+",\n    \"name\": \"Loyalty Points\",\n    \"value\": 500\n  }\n]"
