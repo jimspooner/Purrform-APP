@@ -6,8 +6,8 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
 
-DATABASE_URL = os.getenv('DATABASE_URL')
-my_database_connection = (DATABASE_URL).replace("postgres://", "postgresql://", 1)
+DB_CONNECTION_URL = os.getenv('DB_CONNECTION_URL')
+my_database_connection = (DB_CONNECTION_URL).replace("postgres://", "postgresql://", 1)
 
 engine=create_engine(my_database_connection,
     echo=True
