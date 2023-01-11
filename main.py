@@ -16,11 +16,14 @@ import os
 from dotenv import load_dotenv, find_dotenv
 import json
 
+# local env
+# load_dotenv(find_dotenv('/config/'))
+# kinsta env
 load_dotenv(find_dotenv())
 
 X_AUTH = os.getenv('X_AUTH')
 
-print(X_AUTH)
+# print(X_AUTH)
 
 config.models.Base.metadata.create_all(bind=engine)
 
@@ -36,12 +39,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class stockists(BaseModel):
+    title:str
+    add:str
+    city:str
+    zip:str
+    country:str
+    email:str
+    url:str
+    iso:str
+    lat:str
+    lng:str
+    
+    class Config:   
+        orm_mode=True
 class loyaltyPoints(BaseModel):
+    created_at:str
+    customer_id:int
+    mode:str
+    new_point:str
+    old_point:int
+    order_id:int
+    status:str
+    type:str
+    updated_at:str
+    class Config:   
+        orm_mode=True
+
+class showPoints(BaseModel):
+    store_hash:str
     cid:str
-    store:str
-    cart_id:str
-    # redeem_point:int
-    # point:int
+    checkout_id:str
+
+    class Config:   
+        orm_mode=True
+
+class redeemPoints(BaseModel):
+    store_hash:str
+    cid:str
+    checkout_id:str
+    redeem_point:str
+
+    class Config:   
+        orm_mode=True
+
+class removePoints(BaseModel):
+    store_hash:str
+    cid:str
+    checkout_id:str
+    point:str
+
     class Config:   
         orm_mode=True
 class productItem(BaseModel):
@@ -68,33 +115,33 @@ class UpdateDelivery(BaseModel):
         orm_mode=True
 
 #  DELIVERY DATES
+
 @app.get("/api/v3/delivery_instruction_date/")
-def get_delivery_dates(store_hash:str, db: Session = Depends(get_db)):
-# CHECK STORE
+async def get_delivery_dates(store_hash:str, db: Session = Depends(get_db)):
+    # CHECK STORE
     if store_hash == "ipw9t98930":
-    # GET DELIVERY DATES AND CURRENT TIME
+        # GET DELIVERY DATES AND CURRENT TIME
         deliveries = db.query(config.models.Delivery).limit(14)
         currentTime = time.strftime("%H")
         curernt_date_enabled = True
         if int(currentTime) > 12:
             curernt_date_enabled = False
-    # DELIVERY SLOTS DICTIONARY
-        # print(curernt_date_enabled)
+        # DELIVERY SLOTS DICTIONARY
+
         delivery_slots_available = {}
         for deliverydata in deliveries:
             delivery_slots_available[deliverydata.delivery_date] = deliverydata.delivery_slot  
-        data_output = {"data":delivery_slots_available,"delivery_dates_off":"2022-12-25,2022-12-26,2022-12-23,2022-12-24,2022-12-27,2022-12-28,2022-12-29,2022-12-30,2022-12-31,2023-01-03","delivery_limit":"200","is_current_date_enabled":curernt_date_enabled,"max_date":15}
+        data_output = {"data":delivery_slots_available,"delivery_dates_off":"2023-01-18,2022-12-26,2022-12-23,2022-12-24,2022-12-27,2022-12-28,2022-12-29,2022-12-30,2022-12-31,2023-01-03","delivery_limit":"200","is_current_date_enabled":curernt_date_enabled,"max_date":15}
         data = jsonable_encoder(data_output)
-        # print(delivery_slots_available)
-        # print(data_output)
+
         return JSONResponse(content=data)
     else:
-         return {"Error":"Incorrect store"}
+        return {"Error":"Incorrect store"}
 
     
 @app.put("/api/v3/delivery_date_update/")
 async def update_delivery_date(update: UpdateDelivery):
-# CHECK STORE
+    # CHECK STORE
     if update.store_hash == "ipw9t98930":
     # UPDATE DELIVERY SLOTS (CUSTOMER MESSAGE) ON BIGCOMMERCE ORDER
         conn = http.client.HTTPSConnection("api.bigcommerce.com")
@@ -105,9 +152,7 @@ async def update_delivery_date(update: UpdateDelivery):
             'X-Auth-Token':X_AUTH
             }
         conn.request("PUT", "/stores/"+update.store_hash+"/v3/checkouts/"+update.cart_id+"", payload, headers)
-        # res = conn.getresponse()
-        # data = res.read()
-        # print(data.decode("utf-8"))
+
     else:
         return {"Error":"Incorrect store"}
 
@@ -155,22 +200,145 @@ async def validate_products(item:productItem):
 # LOYALTY POINTS
 
 @app.post("/api/v3/show_loyalty_point/")
-async def show_loyalty_points(showLoyalty:loyaltyPoints):
+async def show_loyalty_points(showLoyalty:showPoints):
     # GET POINTS FROM BC USER DATA
     conn = http.client.HTTPSConnection("api.bigcommerce.com")
+    conn1 = http.client.HTTPSConnection("api.bigcommerce.com")
     headers = {
         'Content-Type': "",
         'Accept': "",
         'X-Auth-Token': X_AUTH
         }
-    conn.request("GET", "/stores/"+showLoyalty.store+"/v3/customers/form-field-values?customer_id="+showLoyalty.cid+"", headers=headers)
+    # GET CHECKOUT FROM ID
+    conn1.request("GET", "/stores/"+showLoyalty.store_hash+"/v3/checkouts/"+showLoyalty.checkout_id, headers=headers)
+    # GET LOYALTY POINTS FROM BC CUSTOMER POINTS
+    conn.request("GET", "/stores/"+showLoyalty.store_hash+"/v3/customers/form-field-values?customer_id="+showLoyalty.cid+"", headers=headers)
+    res1 = conn1.getresponse()
     res = conn.getresponse()
+    data1 = json.loads(res1.read())
     data = json.loads(res.read()) 
-    print(data)
-    pointsData = data.get('data')
-    pointCurrency = "{:.2f}".format(pointsData[0]["value"]/100)
-    return {"message":"Use "+str(pointsData[0]["value"])+" Points for a "+str(pointCurrency)+" discount on this order!","monetry_point":"2.00","total_point":str(pointsData[0]["value"])}
+    discountAmount = data1['data']['cart']['discount_amount']
+    print(discountAmount)
+    # CHECK IF CUSTOMER HAS ALREADY ADDED POINTS TO CART
+    if discountAmount > 0:
+        return {}
+    else :
+        pointsData = data.get('data')
+        pointCurrency = "{:.2f}".format(pointsData[0]["value"]/100)
+        return {"message":"Use "+str(pointsData[0]["value"])+" Points for a &pound"+str(pointCurrency)+" discount on this order!","monetry_point":"2.00","total_point":str(pointsData[0]["value"])}
 
 
+@app.get("/api/v3/earn_LP/")
+def get_loyalty_points(store_hash:str, cust_id:str, db: Session = Depends(get_db)):
+    # CHECK STORE
+    if store_hash == "ipw9t98930":
+        # GET LOYALTY POINTS API DATABASE
+        points = db.query(config.models.Points).filter(config.models.Points.customer_id == cust_id).all()
+        # CALC TOTAL POINTS FROM API DATABASE
+        total_points = 0
+        for point in points:
+            if point.status == 'EARNED':
+                intPoint = point.new_point.replace('+','')
+                total_points = total_points+int(intPoint)
+            if point.status == 'REDEEMED':
+                intPoint = point.new_point.replace('-','')
+                total_points = total_points-int(intPoint)
 
-   
+        points_output = {"Data":points,"total_points":total_points}
+        data = jsonable_encoder(points_output)
+        
+        return data
+    else:
+        return {"Error":"Incorrect store"}
+
+
+@app.post("/api/v3/redeem_loyalty_point/")
+def redeem_loyalty_points(redeemLoyalty:redeemPoints):
+    # ADD DISCOUNT TO CHECKOUT ID
+    conn = http.client.HTTPSConnection("api.bigcommerce.com")
+    cartDiscount = (int(redeemLoyalty.redeem_point)/100)
+    redeem_points = str(cartDiscount)
+    store_hash = redeemLoyalty.store_hash
+    checkout_id = redeemLoyalty.checkout_id
+
+    payload = "{\n  \"cart\": {\n    \"discounts\": [\n      {\n        \"discounted_amount\": "+redeem_points+",\n        \"name\": \"manual\"\n      }\n    ]\n  }\n}"
+    headers = {
+        'Content-Type': "application/json",
+        'Accept': "application/json",
+        'X-Auth-Token': X_AUTH
+        }
+
+    conn.request("POST", "/stores/"+store_hash+"/v3/checkouts/"+checkout_id+"/discounts", payload, headers)
+
+    res = conn.getresponse()
+    data = res.read()
+        
+    return data
+
+@app.post("/api/v3/remove_loyalty_point/")
+def remove_loyalty_points(removeLoyalty:removePoints):
+    # REMOVE DISCOUNT TO CHECKOUT ID
+    conn = http.client.HTTPSConnection("api.bigcommerce.com")
+    store_hash = removeLoyalty.store_hash
+    checkout_id = removeLoyalty.checkout_id
+    point = removeLoyalty.point
+
+    payload = "{\n  \"cart\": {\n    \"discounts\": [\n      {\n        \"discounted_amount\": "+point+",\n        \"name\": \"manual\"\n      }\n    ]\n  }\n}"
+    headers = {
+        'Content-Type': "application/json",
+        'Accept': "application/json",
+        'X-Auth-Token': X_AUTH
+        }
+
+    conn.request("POST", "/stores/"+store_hash+"/v3/checkouts/"+checkout_id+"/discounts", payload, headers)
+
+    res = conn.getresponse()
+    data = res.read()
+        
+    return data
+
+# STOCKIST
+@app.get("/api/v3/stockist/")
+async def stockists(store_hash:str, db: Session = Depends(get_db)):
+    if store_hash == "ipw9t98930":
+        # GET STOCKISTS
+        stockist_list = db.query(config.models.stockists).all()
+        
+        return stockist_list
+    else:
+        return {"Error":"Incorrect store"}
+
+# CAT BDAYS
+@app.get("/api/v3/cat_reg/")
+async def stockists(store_hash:str, cid:str, db: Session = Depends(get_db)):
+    if store_hash == "ipw9t98930":
+        # GET STOCKISTS
+        cbday_list = db.query(config.models.catbday).all()
+        
+        return cbday_list
+    else:
+        return {"Error":"Incorrect store"}
+
+
+# BC WEB HOOKS
+@app.post("/webhook/v3/order_created")
+async def order_created():
+    # UPDATE DELIVERY LOG
+    # UPDATE LOYALTY POINTS
+    pass
+
+@app.post("/webhook/v3/order_refund")
+async def order_refund():
+    # UPDATE LOYALTY POINTS
+    pass
+
+@app.post("/webhook/v3/order_update")
+async def order_update():
+    # UPDATE LOYALTY POINTS
+    pass
+
+@app.post("/webhook/v3/customer_update")
+async def customer_update():
+    # UPDATE LOYALTY POINTS
+    pass
+
