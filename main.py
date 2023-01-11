@@ -115,11 +115,6 @@ class UpdateDelivery(BaseModel):
         orm_mode=True
 
 class UpdateCustomer(BaseModel):
-    producer:str
-    hash:str
-    created_at:str
-    store_id:str
-    scope:str
     data:List
 
     class Config:   
@@ -351,11 +346,13 @@ async def order_update():
 @app.post("/webhook/v3/customer_update", status_code=200)
 async def customer_update(updateLoyalty:UpdateCustomer):
     # UPDATE LOYALTY POINTS
-    cust_id = updateLoyalty.data[1]
-
+    formField = updateLoyalty.data[0]
+    for item, val in formField.items():
+        if item == 'customer_id':
+            cust_id = val
     conn = http.client.HTTPSConnection("api.bigcommerce.com")
 
-    payload = "[\n  {\n    \"customer_id\": "+str(cust_id)+",\n    \"name\": \"Loyalty Points\",\n    \"value\": 400\n  }\n]"
+    payload = "[\n  {\n    \"customer_id\": "+str(cust_id)+",\n    \"name\": \"Loyalty Points\",\n    \"value\": 500\n  }\n]"
 
     headers = {
         'Content-Type': "application/json",
@@ -364,8 +361,8 @@ async def customer_update(updateLoyalty:UpdateCustomer):
 
     conn.request("PUT", "/stores/ipw9t98930/v3/customers/form-field-values", payload, headers)
 
-    # res = conn.getresponse()
-    # data = res.read()
+    res = conn.getresponse()
+    data = res.read()
 
-    pass
+    return data
 
