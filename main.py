@@ -355,7 +355,7 @@ async def customer_update(updateLoyalty:UpdateCustomer):
 
     conn = http.client.HTTPSConnection("api.bigcommerce.com")
 
-    payload = "[\n  {\n    \"customer_id\": "+str(cust_id)+",\n    \"name\": \"Loyalty Points\",\n    \"value\": 500\n  }\n]"
+    payload = "[\n  {\n    \"customer_id\": "+cust_id+",\n    \"name\": \"Loyalty Points\",\n    \"value\": 500\n  }\n]"
 
     headers = {
         'Content-Type': "application/json",
