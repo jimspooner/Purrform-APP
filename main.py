@@ -114,6 +114,17 @@ class UpdateDelivery(BaseModel):
     class Config:   
         orm_mode=True
 
+class UpdateCustomer(BaseModel):
+    producer:str
+    hash:str
+    created_at:str
+    store_id:str
+    scope:str
+    data:List
+
+    class Config:   
+        orm_mode=True
+
 #  DELIVERY DATES
 
 @app.get("/api/v3/delivery_instruction_date/")
@@ -218,7 +229,7 @@ async def show_loyalty_points(showLoyalty:showPoints):
     data1 = json.loads(res1.read())
     data = json.loads(res.read()) 
     discountAmount = data1['data']['cart']['discount_amount']
-    print(discountAmount)
+
     # CHECK IF CUSTOMER HAS ALREADY ADDED POINTS TO CART
     if discountAmount > 0:
         return {}
@@ -337,8 +348,24 @@ async def order_update():
     # UPDATE LOYALTY POINTS
     pass
 
-@app.post("/webhook/v3/customer_update")
-async def customer_update():
+@app.post("/webhook/v3/customer_update", status_code=200)
+async def customer_update(updateLoyalty:UpdateCustomer):
     # UPDATE LOYALTY POINTS
+    cust_id = updateLoyalty.data[1]
+
+    conn = http.client.HTTPSConnection("api.bigcommerce.com")
+
+    payload = "[\n  {\n    \"customer_id\": "+str(cust_id)+",\n    \"name\": \"Loyalty Points\",\n    \"value\": 400\n  }\n]"
+
+    headers = {
+        'Content-Type': "application/json",
+        'X-Auth-Token': X_AUTH
+        }
+
+    conn.request("PUT", "/stores/ipw9t98930/v3/customers/form-field-values", payload, headers)
+
+    # res = conn.getresponse()
+    # data = res.read()
+
     pass
 
